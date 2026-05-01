@@ -1,0 +1,39 @@
+# Add this block to your main docker-compose.yml or include with:
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+
+services:
+  codex-self:
+    build:
+      context: ./codex-self
+      dockerfile: Dockerfile
+    container_name: codex-self
+    hostname: codex-self
+    ports:
+      - "9001:9001"
+    environment:
+      - AGENT_NAME=codex-self
+      - AGENT_VERSION=2.0.0
+      - AGENT_ROLE=cli-assistant
+      - CODEX_SELF_HOST=0.0.0.0
+      - CODEX_SELF_PORT=9001
+      - SAHIIXX_BUS_URL=http://sahiixx-bus:9000
+      - LOG_LEVEL=info
+    volumes:
+      - codex_memory:/root/.codex/memories
+      - codex_skills:/root/.codex/skills:ro
+    networks:
+      - sahiixx-network
+    depends_on:
+      sahiixx-bus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9001/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  codex_memory:
+  codex_skills:

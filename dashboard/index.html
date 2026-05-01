@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex Self — Live Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --fg: #c9d1d9; --dim: #8b949e; --accent: #58a6ff;
+    --success: #3fb950; --warn: #d29922; --danger: #f85149;
+    --font: 'Segoe UI', Roboto, Helvetica, Arial, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--font); font-size: 14px; line-height: 1.5;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+    background: var(--panel); position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 1.25rem; color: var(--accent); }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
+  .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .status-dot.offline { background: var(--danger); }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem; padding: 1.5rem; max-width: 1400px; margin: 0 auto;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem;
+  }
+  .card h2 { margin: 0 0 0.75rem; font-size: 0.9rem; text-transform: uppercase; color: var(--dim); letter-spacing: 0.05em; }
+  .metric { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+  .metric:last-child { border-bottom: none; }
+  .metric-value { font-family: monospace; color: var(--accent); }
+  .badge {
+    display: inline-block; background: #21262d; border: 1px solid var(--border);
+    border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.8rem; margin: 0.2rem;
+  }
+  .badge.enabled { border-color: var(--success); color: var(--success); }
+  .log {
+    font-family: monospace; font-size: 0.85rem; max-height: 220px; overflow-y: auto;
+    background: #0d1117; border-radius: 6px; padding: 0.5rem; color: var(--dim);
+  }
+  .log .ts { color: var(--accent); margin-right: 0.5rem; }
+  .log .ok { color: var(--success); }
+  .log .err { color: var(--danger); }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 0.4rem 0.8rem; cursor: pointer; font-size: 0.85rem; margin-right: 0.4rem;
+  }
+  button:hover { filter: brightness(1.1); }
+  .input-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--fg);
+    border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.85rem;
+  }
+  .warn { color: var(--warn); }
+  .danger { color: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <div><span id="conn-dot" class="status-dot offline"></span><span id="conn-text">Disconnected</span></div>
+  <h1>Codex Self — Live Dashboard</h1>
+  <div style="color:var(--dim);font-size:0.85rem;">WebSocket / Real-time Metrics</div>
+</header>
+
+<div class="grid">
+  <!-- Identity -->
+  <div class="card">
+    <h2>Identity</h2>
+    <div class="metric"><span>Name</span><span class="metric-value" id="id-name">—</span></div>
+    <div class="metric"><span>Version</span><span class="metric-value" id="id-ver">—</span></div>
+    <div class="metric"><span>Role</span><span class="metric-value" id="id-role">—</span></div>
+    <div class="metric"><span>Runtime</span><span class="metric-value" id="id-runtime">—</span></div>
+    <div class="metric"><span>PID</span><span class="metric-value" id="id-pid">—</span></div>
+    <div class="metric"><span>Uptime</span><span class="metric-value" id="id-uptime">—</span></div>
+    <div id="id-caps" style="margin-top:0.5rem;"></div>
+  </div>
+
+  <!-- Health -->
+  <div class="card">
+    <h2>Health Diagnostics</h2>
+    <div class="metric"><span>Status</span><span class="metric-value" id="h-status">—</span></div>
+    <div class="metric"><span>CPU %</span><span class="metric-value" id="h-cpu">—</span></div>
+    <div class="metric"><span>Memory %</span><span class="metric-value" id="h-mem">—</span></div>
+    <div class="metric"><span>Disk %</span><span class="metric-value" id="h-disk">—</span></div>
+    <div class="metric"><span>Threads</span><span class="metric-value" id="h-threads">—</span></div>
+    <div class="metric"><span>Open Files</span><span class="metric-value" id="h-files">—</span></div>
+    <div class="metric"><span>Bus Reachable</span><span class="metric-value" id="h-bus">—</span></div>
+    <div class="metric"><span>Sandbox Valid</span><span class="metric-value" id="h-sandbox">—</span></div>
+    <div style="margin-top:0.5rem;"><button onclick="wsAction('diagnose')">Run Diagnose</button></div>
+  </div>
+
+  <!-- Bus -->
+  <div class="card">
+    <h2>SAHIIXX Bus</h2>
+    <div class="metric"><span>URL</span><span class="metric-value" id="b-url">—</span></div>
+    <div class="metric"><span>Registered</span><span class="metric-value" id="b-reg">—</span></div>
+    <div class="metric"><span>Reachable</span><span class="metric-value" id="b-reach">—</span></div>
+    <div style="margin-top:0.5rem;"><button onclick="wsAction('identity')">Refresh Identity</button></button></div>
+  </div>
+
+  <!-- Sandbox Audit -->
+  <div class="card">
+    <h2>Sandbox Audit</h2>
+    <div id="sandbox-log" class="log">Waiting for events...</div>
+  </div>
+
+  <!-- Memory -->
+  <div class="card">
+    <h2>Memory Store</h2>
+    <div class="input-row">
+      <input id="mem-key" placeholder="Key">
+      <input id="mem-val" placeholder="Value (JSON)">
+      <button onclick="setMemory()">Set</button>
+    </div>
+    <div id="mem-list" class="log" style="margin-top:0.5rem;max-height:160px;"></div>
+  </div>
+
+  <!-- Event Stream -->
+  <div class="card" style="grid-column: 1 / -1;">
+    <h2>Event Stream</h2>
+    <div id="event-log" class="log" style="max-height:300px;"></div>
+  </div>
+</div>
+
+<script>
+  const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProto}//${location.host}/ws`;
+  let ws;
+  const $ = id => document.getElementById(id);
+
+  function logEvent(msg, type='info') {
+    const el = $('event-log');
+    const line = document.createElement('div');
+    const ts = new Date().toISOString().split('T')[1].slice(0,8);
+    line.innerHTML = `\u003cspan class='ts'\u003e${ts}\u003c/span\u003e\u003cspan class='${type}'\u003e${msg}\u003c/span\u003e`;
+    el.prepend(line);
+    if (el.children.length > 200) el.lastChild.remove();
+  }
+
+  function setConn(ok) {
+    $('conn-dot').className = 'status-dot ' + (ok ? 'online' : 'offline');
+    $('conn-text').textContent = ok ? 'Connected' : 'Disconnected';
+  }
+
+  function wsAction(action, payload={}) {
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({action, ...payload}));
+    } else {
+      logEvent('WebSocket not open', 'err');
+    }
+  }
+
+  async function setMemory() {
+    const key = $('mem-key').value;
+    const val = $('mem-val').value;
+    if (!key) return;
+    let parsed;
+    try { parsed = JSON.parse(val); } catch { parsed = val; }
+    try {
+      const r = await fetch(`/memory/${encodeURIComponent(key)}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({value: parsed})
+      });
+      if (r.ok) logEvent(`memory set: ${key}`, 'ok');
+      else logEvent(`memory set failed: ${key}`, 'err');
+    } catch (e) { logEvent(`memory set error: ${e}`, 'err'); }
+    fetchMemory();
+  }
+
+  async function fetchMemory() {
+    try {
+      const r = await fetch('/memory');
+      const data = await r.json();
+      $('mem-list').textContent = (data.keys || []).join('\n') || 'No keys stored.';
+    } catch (e) { $('mem-list').textContent = 'Error loading keys.'; }
+  }
+
+  function connect() {
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      setConn(true);
+      logEvent('WebSocket connected', 'ok');
+      wsAction('identity');
+      wsAction('diagnose');
+      fetchMemory();
+    };
+    ws.onmessage = (ev) => {
+      const data = JSON.parse(ev.data);
+      handleEvent(data);
+    };
+    ws.onclose = () => {
+      setConn(false);
+      logEvent('WebSocket closed — reconnecting in 3s', 'err');
+      setTimeout(connect, 3000);
+    };
+    ws.onerror = (e) => {
+      setConn(false);
+      logEvent('WebSocket error', 'err');
+    };
+  }
+
+  function handleEvent(data) {
+    logEvent(`event: ${data.event}`);
+    if (data.event === 'identity') {
+      const a = data.agent;
+      $('id-name').textContent = a.name;
+      $('id-ver').textContent = a.version;
+      $('id-role').textContent = a.role;
+      $('id-runtime').textContent = a.runtime;
+      $('id-pid').textContent = a.pid;
+      const caps = a.capabilities.map(c => `\u003cspan class='badge ${c.enabled?"enabled":""}'\u003e${c.name}\u003c/span\u003e`).join('');
+      $('id-caps').innerHTML = caps;
+    }
+    if (data.event === 'diagnose') {
+      const r = data.report;
+      $('h-status').textContent = r.status;
+      $('h-status').className = 'metric-value ' + (r.status==='healthy'?'ok':(r.status==='degraded'?'warn':'danger'));
+      $('h-cpu').textContent = (r.checks?.cpu_percent ?? '—') + '%';
+      $('h-mem').textContent = (r.checks?.memory_percent ?? '—') + '%';
+      $('h-disk').textContent = (r.checks?.disk_usage_percent ?? '—') + '%';
+      $('h-threads').textContent = r.checks?.thread_count ?? '—';
+      $('h-files').textContent = r.checks?.open_files ?? '—';
+      $('h-bus').textContent = r.checks?.bus_reachable ? 'Yes' : 'No';
+      $('h-sandbox').textContent = r.checks?.sandbox_valid ? 'Yes' : 'No';
+      $('b-url').textContent = r.checks?.bus_url || '—';
+      $('b-reg').textContent = r.checks?.bus_registered ? 'Yes' : 'No';
+      $('b-reach').textContent = r.checks?.bus_reachable ? 'Yes' : 'No';
+      if (r.warnings?.length) {
+        r.warnings.forEach(w => logEvent(`WARN: ${w}`, 'warn'));
+      }
+    }
+    if (data.event === 'startup' || data.event === 'shutdown') {
+      logEvent(`Agent ${data.event}: ${data.agent?.name}`, 'ok');
+    }
+  }
+
+  // Poll bus status periodically since WS may not push it
+  setInterval(async () => {
+    try {
+      const r = await fetch('/bus/status');
+      const d = await r.json();
+      $('b-url').textContent = d.bus_url;
+      $('b-reg').textContent = d.registered ? 'Yes' : 'No';
+      $('b-reach').textContent = d.reachable ? 'Yes' : 'No';
+    } catch (e) {}
+  }, 5000);
+
+  connect();
+</script>
+</body>
+</html>

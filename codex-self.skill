@@ -1,0 +1,74 @@
+{
+  "name": "codex-self",
+  "description": "Self-aware runtime identity, health diagnostics, memory persistence, sandbox enforcement, and ecosystem bus integration for the Codex CLI assistant.",
+  "version": "2.0.0",
+  "author": "SAHIIXX",
+  "triggers": [
+    "build yourself",
+    "codex self",
+    "agent identity",
+    "self diagnostics",
+    "health check",
+    "sandbox audit",
+    "memory store",
+    "skill registry",
+    "bus register",
+    "websocket dashboard"
+  ],
+  "parameters": {
+    "host": {
+      "type": "string",
+      "default": "0.0.0.0",
+      "description": "ASGI bind host"
+    },
+    "port": {
+      "type": "integer",
+      "default": 9001,
+      "description": "ASGI bind port"
+    },
+    "bus_url": {
+      "type": "string",
+      "default": "http://sahiixx-bus:9000",
+      "description": "SAHIIXX A2A bus endpoint"
+    },
+    "memory_path": {
+      "type": "string",
+      "default": "~/.codex/memories/codex_self.db",
+      "description": "SQLite memory store path"
+    }
+  },
+  "runtime": {
+    "language": "python",
+    "requires": ">=3.11",
+    "entrypoint": "codex_self.main:cli_entry",
+    "dependencies": [
+      "fastapi>=0.111",
+      "uvicorn[standard]>=0.30",
+      "websockets>=12.0",
+      "httpx>=0.27",
+      "pydantic>=2.7",
+      "pydantic-settings>=2.2",
+      "psutil>=6.0",
+      "aiofiles>=24.0",
+      "rich>=13.7"
+    ]
+  },
+  "endpoints": {
+    "health": "/health",
+    "diagnose": "/diagnose",
+    "identity": "/identity",
+    "capabilities": "/capabilities",
+    "skills": "/skills",
+    "memory": "/memory/{key}",
+    "sandbox_check": "/sandbox/check",
+    "sandbox_audit": "/sandbox/audit",
+    "bus_status": "/bus/status",
+    "bus_register": "/bus/register",
+    "websocket": "/ws",
+    "dashboard": "/"
+  },
+  "sandbox": {
+    "mode": "workspace-write",
+    "writable_roots": ["~/.codex/memories", "~", "/tmp"]
+  }
+}
