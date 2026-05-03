@@ -26,6 +26,7 @@ class Settings:
     )
     memory_path: Path = Path(os.getenv("CODEX_MEMORY_PATH", str(Path.home() / ".codex" / "memories" / "codex_self.db")))
     log_level: str = os.getenv("LOG_LEVEL", "info")
+    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
 
     def is_writable(self, path: str | Path) -> bool:
         """Check whether a path is inside any declared writable root."""

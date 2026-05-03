@@ -223,7 +223,19 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         except Exception:
             pass
 
-# ── Dashboard fallback ─────────────────────────────────────────
+# ── Config / Status ────────────────────────────────────────────
+@app.get("/status", tags=["status"])
+async def status() -> JSONResponse:
+    return JSONResponse(
+        content={
+            "agent": identity.to_dict(),
+            "openai_configured": bool(settings.openai_api_key),
+            "bus_url": settings.bus_url,
+            "memory_path": str(settings.memory_path),
+        }
+    )
+
+
 @app.get("/", tags=["dashboard"])
 async def root() -> HTMLResponse:
     html_path = os.path.join(dashboard_dir, "index.html")
